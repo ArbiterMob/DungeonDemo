@@ -1,0 +1,13 @@
+# Blender 5.1.2 MTL File: 'chest1.blend'
+# www.blender.org
+
+newmtl Phantom
+Ns 22.499992
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd FabricPlainNaturalSheer1K/FabricPlainNaturalSheer009_COL_1K.jpg
+map_Bump -bm 1.000000 FabricPlainNaturalSheer1K/FabricPlainNaturalSheer009_NRM_1K.png

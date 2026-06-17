@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>WebGL Test</title>
+
+    <script src="resources/dat.gui.js"></script>
+    <script src="resources/glm_utils.js"></script>
+    <script src="resources/load2_mesh.js"></script>
+    <script src="resources/m4.js"></script>
+    <script src="resources/mesh_utils.js"></script>
+    <script src="resources/webgl-utils.js"></script>
+
+    <script src="projectCG.js" type="module"></script>
+    <script src="sceneObject.js" type="module"></script>
+
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #glcanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #game-log {
+            display: flex;
+            flex-direction: column;
+
+            position: absolute;
+
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            max-height: 200px;
+
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-family: monospace, sans-serif;
+            font-size: 14px;
+
+            padding: 10px;
+            border-radius: 8px;
+            overflow-y: auto;
+            /* Adds a scrollbar if messages exceed max-height */
+            z-index: 5;
+            pointer-events: auto;
+            /* Allows the user to scroll the log */
+        }
+
+        #next-turn {
+            display: block;
+
+            position: absolute;
+
+            top: 20px;
+            left: 20px;
+            z-index: 5;
+
+            /*padding: 50px;*/
+            font-size: 16px;
+        }
+
+        #settings-menu {
+            display: none;
+
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+
+            background-color: rgba(30, 30, 30, 0.9);
+            color: white;
+            font-family: Arial, sans-serif;
+
+            padding: 50px;
+            box-sizing: border-box;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        
+    </style>
+</head>
+
+
+<body>
+    <div id="game-container">
+        <canvas id="glcanvas" tabindex="1"></canvas>
+
+        <div id="game-log"></div>
+        <button id="next-turn">Next Turn</button>
+
+        <div id="settings-menu">
+            <h2>TESTING - da inserire comandi</h2>
+            <button id="close-settings-menu">Close</button>
+        </div>
+    </div>
+</body>
+
+    <script id="lightShadowBumpShininessMetalnessFragment" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 v_texCoord;
+        varying vec4 v_projectedTexCoord;
+        varying vec3 v_surfaceToLight;
+        varying vec3 v_surfaceToView;
+        
+        uniform sampler2D u_texture;
+        uniform sampler2D u_normalMap;
+        uniform sampler2D u_roughnessMap;
+        uniform sampler2D u_metalnessMap;
+
+        uniform sampler2D u_projectedTexture;
+        uniform float u_bias;
+        
+        uniform vec3 u_lightDirection;
+        uniform float u_innerLimit;
+        uniform float u_outerLimit;
+
+        //uniform vec3 u_Ka;        // Ka
+        //uniform vec3 u_Kd;        // Kd
+        //uniform float u_Ns;         // Ns
+
+        varying vec3 v_T;
+        varying vec3 v_B;
+        varying vec3 v_N;
+
+        void main()
+        {            
+            mat3 TBN = mat3(v_T, v_B, v_N);
+            vec3 normal = texture2D(u_normalMap, v_texCoord).rgb;
+            normal = normal * 2.0 - 1.0;
+            normal = normalize(TBN * normal);
+            
+            if (!gl_FrontFacing) normal = -normal;
+
+            vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+            vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+            vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
+
+            float dotFromDirection = dot(surfaceToLightDirection, u_lightDirection);
+            float limitRange = u_innerLimit - u_outerLimit;
+            float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);
+
+            float roughness = texture2D(u_roughnessMap, v_texCoord).r;
+            float shininess = 2.0 + (1.0 - roughness) * 254.0;
+
+            float metalness = texture2D(u_metalnessMap, v_texCoord).r;
+
+            vec4 texColor = texture2D(u_texture, v_texCoord);
+
+            vec3 specularColor = mix(vec3(0.04), texColor.rgb, metalness);
+
+            float lambertian = max(dot(normal, surfaceToLightDirection), 0.0);
+            float light = inLight * lambertian;
+            float specular = 0.0;
+            if (lambertian > 0.0) specular = inLight * pow(max(dot(normal, halfVector), 0.0), shininess);
+
+            vec3 projectedTexCoord = v_projectedTexCoord.xyz / v_projectedTexCoord.w;
+            float currentDepth = projectedTexCoord.z + u_bias;
+            
+            bool inRange = 
+                projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
+                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0 &&
+                projectedTexCoord.z >= 0.0 && projectedTexCoord.z <= 1.0;
+
+            float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
+            float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
+
+            
+            gl_FragColor = vec4(
+                texColor.rgb* 0.3 +
+                texColor.rgb * light * shadowLight +
+                specularColor * specular * shadowLight,
+                texColor.a
+            );
+        }
+    </script>
+
+    <script id="lightShadowBumpShininessFragment" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 v_texCoord;
+        varying vec4 v_projectedTexCoord;
+        varying vec3 v_surfaceToLight;
+        varying vec3 v_surfaceToView;
+        
+        uniform sampler2D u_texture;
+        uniform sampler2D u_normalMap;
+        uniform sampler2D u_roughnessMap;
+
+        uniform sampler2D u_projectedTexture;
+        uniform float u_bias;
+        
+        uniform vec3 u_lightDirection;
+        uniform float u_innerLimit;
+        uniform float u_outerLimit;
+
+        //uniform vec3 u_Ka;        // Ka
+        //uniform vec3 u_Kd;        // Kd
+        //uniform float u_Ns;         // Ns
+
+        varying vec3 v_T;
+        varying vec3 v_B;
+        varying vec3 v_N;
+
+        void main()
+        {            
+            mat3 TBN = mat3(v_T, v_B, v_N);
+            vec3 normal = texture2D(u_normalMap, v_texCoord).rgb;
+            normal = normal * 2.0 - 1.0;
+            normal = normalize(TBN * normal);
+            
+            if (!gl_FrontFacing) normal = -normal;
+
+            vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+            vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+            vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
+
+            float dotFromDirection = dot(surfaceToLightDirection, u_lightDirection);
+            float limitRange = u_innerLimit - u_outerLimit;
+            float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);
+
+            float roughness = texture2D(u_roughnessMap, v_texCoord).r;
+            float shininess = 2.0 + (1.0 - roughness) * 254.0;
+
+            float lambertian = max(dot(normal, surfaceToLightDirection), 0.0);
+            float light = inLight * lambertian;
+            float specular = 0.0;
+            if (lambertian > 0.0) specular = inLight * pow(max(dot(normal, halfVector), 0.0), shininess);
+
+            vec3 projectedTexCoord = v_projectedTexCoord.xyz / v_projectedTexCoord.w;
+            float currentDepth = projectedTexCoord.z + u_bias;
+            
+            bool inRange = 
+                projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
+                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0 &&
+                projectedTexCoord.z >= 0.0 && projectedTexCoord.z <= 1.0;
+
+            float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
+            float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
+
+            vec4 texColor = texture2D(u_texture, v_texCoord);
+            gl_FragColor = vec4(
+                texColor.rgb * 0.3 +
+                texColor.rgb * light * shadowLight +
+                specular * shadowLight,
+                texColor.a
+            );
+        }
+    </script>
+
+    <script id="lightShadowBumpVertex" type="x-shader/x-vertex">
+        attribute vec4 a_position;
+        attribute vec3 a_normal;
+        attribute vec3 a_tangent;
+        attribute vec2 a_texCoord;
+
+        uniform mat4 u_modelMatrix;
+        uniform mat4 u_viewMatrix;
+        uniform mat4 u_projectionMatrix;
+        uniform mat4 u_normalMatrix;
+        uniform mat4 u_textureMatrix;
+
+        uniform vec3 u_lightPosition;
+        uniform vec3 u_cameraPosition;
+
+        varying vec2 v_texCoord;
+        varying vec4 v_projectedTexCoord;
+
+        varying vec3 v_surfaceToLight;
+        varying vec3 v_surfaceToView;
+
+        varying vec3 v_T;
+        varying vec3 v_B;
+        varying vec3 v_N;
+
+        void main()
+        {
+            gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * a_position;
+
+            vec3 N = normalize(vec3(u_normalMatrix * vec4(a_normal, 0.0)));
+            vec3 T = normalize(vec3(u_normalMatrix * vec4(a_tangent, 0.0)));
+            T = normalize(T - dot(T, N) * N);
+            vec3 B = cross(N, T);
+
+            v_T = T;
+            v_B = B;
+            v_N = N;
+
+            // LIGHTING
+            vec3 vertPosition = (u_modelMatrix * a_position).xyz;
+            v_surfaceToLight = u_lightPosition - vertPosition;
+            v_surfaceToView = u_cameraPosition - vertPosition;
+
+            // SHADOW
+            v_projectedTexCoord = u_textureMatrix * (u_modelMatrix * a_position);
+
+            // TEXTURE
+            v_texCoord = a_texCoord;
+        }
+    </script>
+
+    <script id="lightShadowBumpFragment" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 v_texCoord;
+        varying vec4 v_projectedTexCoord;
+        varying vec3 v_surfaceToLight;
+        varying vec3 v_surfaceToView;
+        
+        uniform sampler2D u_texture;
+        uniform sampler2D u_normalMap;
+
+        uniform sampler2D u_projectedTexture;
+        uniform float u_bias;
+        
+        uniform vec3 u_lightDirection;
+        uniform float u_innerLimit;
+        uniform float u_outerLimit;
+
+        //uniform vec3 u_Ka;        // Ka
+        //uniform vec3 u_Kd;        // Kd
+        uniform float u_Ns;         // Ns
+
+        varying vec3 v_T;
+        varying vec3 v_B;
+        varying vec3 v_N;
+
+        void main()
+        {            
+            mat3 TBN = mat3(v_T, v_B, v_N);
+            vec3 normal = texture2D(u_normalMap, v_texCoord).rgb;
+            normal = normal * 2.0 - 1.0;
+            normal = normalize(TBN * normal);
+            
+            if (!gl_FrontFacing) normal = -normal;
+
+            vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+            vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+            vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
+
+            float dotFromDirection = dot(surfaceToLightDirection, u_lightDirection);
+            float limitRange = u_innerLimit - u_outerLimit;
+            float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);
+
+            float lambertian = max(dot(normal, surfaceToLightDirection), 0.0);
+            float light = inLight * lambertian;
+            float specular = 0.0;
+            if (lambertian > 0.0) specular = inLight * pow(max(dot(normal, halfVector), 0.0), u_Ns);
+
+            vec3 projectedTexCoord = v_projectedTexCoord.xyz / v_projectedTexCoord.w;
+            float currentDepth = projectedTexCoord.z + u_bias;
+            
+            bool inRange = 
+                projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
+                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0 &&
+                projectedTexCoord.z >= 0.0 && projectedTexCoord.z <= 1.0;
+
+            float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
+            float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
+
+            vec4 texColor = texture2D(u_texture, v_texCoord);
+            gl_FragColor = vec4(
+                texColor.rgb * 0.3 +
+                texColor.rgb * light * shadowLight +
+                specular * shadowLight,
+                texColor.a
+            );
+        }
+    </script>
+
+
+    <script id="lightShadowVertex" type="x-shader/x-vertex">
+        attribute vec4 a_position;
+        attribute vec4 a_normal;
+        attribute vec2 a_texCoord;
+
+        uniform mat4 u_modelMatrix;
+        uniform mat4 u_viewMatrix;
+        uniform mat4 u_projectionMatrix;
+        uniform mat4 u_normalMatrix;
+        uniform mat4 u_textureMatrix;
+
+        uniform vec3 u_lightPosition;
+        uniform vec3 u_cameraPosition;
+
+        varying vec3 v_normal;
+        varying vec2 v_texCoord;
+        varying vec4 v_projectedTexCoord;
+
+        varying vec3 v_surfaceToLight;
+        varying vec3 v_surfaceToView;
+
+        void main()
+        {
+            gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * a_position;
+
+            // LIGHTING
+            vec3 vertPosition = (u_modelMatrix * a_position).xyz;
+            v_normal = (u_normalMatrix * a_normal).xyz;
+            v_surfaceToLight = u_lightPosition - vertPosition;
+            v_surfaceToView = u_cameraPosition - vertPosition;
+
+            // SHADOW
+            v_projectedTexCoord = u_textureMatrix * (u_modelMatrix * a_position);
+
+            // TEXTURE
+            v_texCoord = a_texCoord;
+        }
+    </script>
+
+    <script id="lightShadowFragment" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec3 v_normal;
+        varying vec2 v_texCoord;
+        varying vec4 v_projectedTexCoord;
+        varying vec3 v_surfaceToLight;
+        varying vec3 v_surfaceToView;
+        
+        uniform sampler2D u_texture;
+        uniform sampler2D u_projectedTexture;
+        uniform float u_bias;
+        
+        uniform vec3 u_lightDirection;
+        uniform float u_innerLimit;
+        uniform float u_outerLimit;
+
+        //uniform vec3 u_Ka;        // Ka
+        //uniform vec3 u_Kd;        // Kd
+        uniform float u_Ns;         // Ns
+
+        void main()
+        {
+            vec3 normal = normalize(v_normal);
+            if (!gl_FrontFacing) normal = -normal;
+
+            vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+            vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+            vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
+
+            float dotFromDirection = dot(surfaceToLightDirection, u_lightDirection);
+            float limitRange = u_innerLimit - u_outerLimit;
+            float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);
+
+            float lambertian = max(dot(normal, surfaceToLightDirection), 0.0);
+            float light = inLight * lambertian;
+            float specular = 0.0;
+            if (lambertian > 0.0) specular = inLight * pow(max(dot(normal, halfVector), 0.0), u_Ns);
+
+            vec3 projectedTexCoord = v_projectedTexCoord.xyz / v_projectedTexCoord.w;
+            float currentDepth = projectedTexCoord.z + u_bias;
+            
+            bool inRange = 
+                projectedTexCoord.x >= 0.0 &&
+                projectedTexCoord.x <= 1.0 &&
+                projectedTexCoord.y >= 0.0 &&
+                projectedTexCoord.y <= 1.0 &&
+                projectedTexCoord.z >= 0.0 &&
+                projectedTexCoord.z <= 1.0;
+
+            float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
+            float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
+
+            vec4 texColor = texture2D(u_texture, v_texCoord);
+            gl_FragColor = vec4(
+                texColor.rgb * 0.3 +
+                texColor.rgb * light * shadowLight +
+                specular * shadowLight,
+                texColor.a
+            );
+        }
+    </script>
+
+
+    <script id="colorVertex" type="x-shader/x-vertex">
+        attribute vec4 a_position;
+
+        uniform mat4 u_modelMatrix;
+        uniform mat4 u_viewMatrix;
+        uniform mat4 u_projectionMatrix;
+
+        void main()
+        {
+            gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * a_position;
+        }
+    </script>
+
+    <script id="colorFragment" type="x-shader/x-fragment">
+        precision mediump float;
+
+        void main()
+        {
+            gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        }
+    </script>
+
+</html>

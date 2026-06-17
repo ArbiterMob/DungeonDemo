@@ -1,0 +1,14 @@
+# Blender 5.1.2 MTL File: 'chest1.blend'
+# www.blender.org
+
+newmtl PavingStones079
+Ns 100.00
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd PavingStones079/PavingStones079_1K-JPG_Color.jpg
+map_Ns PavingStones079/PavingStones079_1K-JPG_Roughness.jpg
+map_Bump -bm 1.000000 PavingStones079/PavingStones079_1K-JPG_NormalGL.jpg
