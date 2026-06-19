@@ -6,8 +6,18 @@ function main()
 {
     const settingsMenu = document.getElementById("settings-menu");
     const closeSettingsButton = document.getElementById("close-settings-menu");
+    const resetSettingsButton = document.getElementById("reset-settings-menu");
+    
+    const gameHud = document.getElementById("game-hud");
+    const hudButton = document.getElementById("hud-button");
     const nextTurnButton = document.getElementById("next-turn");
-    //const gameLog = document.getElementById("game-log");
+    const controlPanelButton = document.getElementById("menu-button");
+    const WButton = document.getElementById("W-button");
+    const AButton = document.getElementById("A-button");
+    const SButton = document.getElementById("S-button");
+    const DButton = document.getElementById("D-button");
+    const EButton = document.getElementById("E-button");
+
 
     const canvas = document.querySelector("#glcanvas");
     canvas.width = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
@@ -73,23 +83,21 @@ function main()
         D: 3.0,
         theta: 3.05,
         phi: 1.22,
-        fieldOfView: 40,
+        fieldOfView: 70,
     }
 
     const controlsLighting =
     {
-        x: 3,
+        /*x: 3,
         y: 4,
-        z: 3,
+        z: 3,*/
         fieldOfView: 120,
         bias: -0.001
     }
 
     const controlsTesting =
     {
-        moveMainObject: false,
-        moveLight: false,
-        followMainObject: false,
+        turnBased: true,
     }
 
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -133,7 +141,7 @@ function main()
     mainObject.position = [2, 0, 2];
     let hammer = new SceneObject("resources/data/hammer/hammer.obj");
     hammer.pivotPoint = [0.326137, 0.744206, 0.472353];
-    floorMatrix[0] = 0;
+    floorMatrix[mainObject.position[0] / 2 + mainObject.position[2] / 2 * rows] = 0;
 
     let skeleton = new SceneObject("resources/data/skeleton/skeleton.obj");
     //skeleton.position = [2, 0, 0];
@@ -177,7 +185,7 @@ function main()
     chestTop.pivotPoint = [0.477224, 0.533019, 0.519912];
     let chestBot = new SceneObject("resources/data/chest/chest_bot.obj");
     chestBot.position = [chestPosition[0] * 2, 0, chestPosition[2] * 2];
-    floorMatrix[chestPosition[0] + chestPosition[2] * rows] = 0;
+    floorMatrix[chestPosition[0] + chestPosition[2] * rows] = 0
 
     const batWaypoints = 
     [
@@ -213,6 +221,18 @@ function main()
     let bulb = new SceneObject("resources/data/bulb/bulb.obj");
     bulb.position = batCore.position;
     let lightPosition = [batCore.position[0], 3.7, batCore.position[2]];
+
+    let paintings = [];
+    paintings.push(
+        new SceneObject("resources/data/paintings/painting0.obj"),
+        new SceneObject("resources/data/paintings/painting2.obj"),
+        new SceneObject("resources/data/paintings/painting3.obj"),
+        new SceneObject("resources/data/paintings/painting5.obj"),
+        new SceneObject("resources/data/paintings/painting6.obj"),
+        new SceneObject("resources/data/paintings/painting8.obj"),
+        new SceneObject("resources/data/paintings/painting9.obj"),
+        new SceneObject("resources/data/paintings/painting11.obj"),
+    );
 
     //const entities = [skeleton, rat];
 
@@ -255,6 +275,12 @@ function main()
 
             await bulb.initializeMesh(gl);
             bulb.initializeAttributes(gl);
+
+            for (let i = 0; i < paintings.length; i++)
+            {
+                await paintings[i].initializeMesh(gl);
+                paintings[i].initializeAttributes(gl);
+            }
 
             requestAnimationFrame(update);
         }
@@ -307,10 +333,7 @@ function main()
             dX = (event.pageX - old_x) * 2 * Math.PI / canvas.width;
             dY = (event.pageY - old_y) * 2 * Math.PI / canvas.height;
             controlsCamera.theta += 0.75 * dX;
-
-            //const maxPhi = (Math.PI / 2) - 0.05;
             controlsCamera.phi += 0.75 * dY;
-            //controlsCamera.phi = Math.max(0.1, Math.min(maxPhi, controlsCamera.phi + 0.75 * dY));
             
             old_x = event.pageX;
             old_y = event.pageY;
@@ -328,7 +351,7 @@ function main()
         {
             controlsCamera.D -= 0.2;
         }
-        controlsCamera.D = Math.max(1.0, Math.min(3.0, controlsCamera.D));
+        controlsCamera.D = Math.max(1.0, Math.min(5.0, controlsCamera.D));
     },
     false);
 
@@ -340,7 +363,94 @@ function main()
         //if (event.code === 'KeyE' && playerTurn && !mainObject.isMoving && mainObject.flag === 1) 
         if (event.code === 'KeyE' && playerTurn && !mainObject.isMoving && !hammer.isRotating)
         {
-            console.log("interaction E");
+            interactionMainObject();
+        }
+
+        const fx = Math.round(Math.cos(mainObject.currentFacingAngle));
+        const fz = - Math.round(Math.sin(mainObject.currentFacingAngle));
+
+        const lx = Math.round(Math.cos(mainObject.currentFacingAngle + Math.PI / 2));
+        const lz = - Math.round(Math.sin(mainObject.currentFacingAngle + Math.PI / 2));
+
+        const bx = - fx;
+        const bz = - fz;
+
+        const rx = Math.round(Math.cos(mainObject.currentFacingAngle - Math.PI / 2));
+        const rz = - Math.round(Math.sin(mainObject.currentFacingAngle - Math.PI / 2));
+
+        if (event.code === 'KeyW') 
+        {
+            moveMainObject(fx, fz);
+        }
+
+        if (event.code === 'KeyA') 
+        {
+            moveMainObject(lx, lz);
+        }
+
+        if (event.code === 'KeyS') 
+        {
+            moveMainObject(bx, bz);
+        }
+
+        if (event.code === 'KeyD') 
+        {
+            moveMainObject(rx, rz);
+        }
+
+        // SETTINGS MENU
+        if (event.code === 'Escape') 
+        {
+            toggleMenu();
+        }
+
+        // NEXT TURN
+        if (event.code === 'Space')
+        {
+            if (controlsTesting.turnBased)
+                nextTurn();
+        }
+        
+        //console.log(event.code)
+    },
+    false);
+
+    function moveMainObject(moveX, moveZ)
+    {
+        if (playerTurn && !mainObject.isMoving && mainObject.numMoves > 0) 
+        {
+            console.log("interaction D");
+            mainObject.startPos = mainObject.position;
+            mainObject.targetPos = [mainObject.position[0] + moveX * mainObject.moveRange, mainObject.position[1], mainObject.position[2] + moveZ * mainObject.moveRange];
+                
+            if (Utils.checkMoveFloor(mainObject.startPos, mainObject.targetPos, floorMatrix, rows, cols))
+            {
+                mainObject.moveProgress = 0.0;
+                mainObject.isMoving = true;
+                if(controlsTesting.turnBased) mainObject.numMoves -= 1;
+
+                mainObject.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
+
+                if (chestOpened)
+                {
+                    hammer.startPos = hammer.position;
+                    hammer.targetPos = [hammer.position[0] + moveX * mainObject.moveRange, hammer.position[1], hammer.position[2] + moveZ * mainObject.moveRange];
+                    hammer.moveProgress = 0.0;
+                    hammer.isMoving = true;
+
+                    hammer.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
+                }
+            }
+            else 
+            {
+                Utils.printToLog("game-log", "You can't move there");
+            }
+        }
+    }
+
+    function interactionMainObject()
+    {
+        console.log("interaction E");
 
             if (chestOpened)
             {
@@ -350,27 +460,25 @@ function main()
 
                 for (let i = 0; i < rats.length; i++)
                 {   
-                    console.log("%%%%%%%");
+                    /*console.log("%%%%%%%");
                     console.log(rats[i].position);
                     console.log(mainObject.position);
-                    console.log("%%%%%%%");
+                    console.log("%%%%%%%");*/
                     if(
                         !rats[i].isDead &&
-                        ((mainObject.position[0] === rats[i].position[0] && mainObject.position[2] === rats[i].position[2] - 2) ||
-                        (mainObject.position[0] === rats[i].position[0] && mainObject.position[2] === rats[i].position[2] + 2) ||
-                        (mainObject.position[0] === rats[i].position[0] - 2 && mainObject.position[2] === rats[i].position[2]) ||
-                        (mainObject.position[0] === rats[i].position[0] + 2 && mainObject.position[2] === rats[i].position[2]))
+                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0]) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2] - 2)) ||
+                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0]) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2] + 2)) ||
+                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0] - 2) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2])) ||
+                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0] + 2) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2]))
                     )
                     {
-                        floorMatrix[rats[i].position[0] / 2 + rats[i].position[2] / 2 * rows] = 1;
+                        floorMatrix[Math.round(rats[i].position[0] / 2) + Math.round(rats[i].position[2] / 2) * rows] = 1; //TODO -> check this
                         rats[i].isDead = true;
                         currRats -= 1;
                         Utils.printToLog("game-log", "You have killed a rat: " + currRats + " rats remaining");
                     }
                 }
             }
-
-
 
             if (
                 !chestOpened &&
@@ -389,155 +497,7 @@ function main()
 
                 hammer.position = mainObject.position;
             }
-        }
-
-        if (event.code === 'KeyW') 
-        {
-            if (playerTurn && !mainObject.isMoving && mainObject.numMoves !== 0)
-            {
-                console.log("interaction W");
-                mainObject.startPos = mainObject.position;
-                mainObject.targetPos = [mainObject.position[0] + mainObject.moveRange, mainObject.position[1], mainObject.position[2]];
-                
-                if (Utils.checkMoveFloor(mainObject.startPos, mainObject.targetPos, floorMatrix, rows, cols))
-                {
-                    mainObject.moveProgress = 0.0;
-                    mainObject.isMoving = true;
-                    mainObject.numMoves -= 1;
-
-                    mainObject.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-
-                    if (chestOpened)
-                    {
-                        hammer.startPos = hammer.position;
-                        hammer.targetPos = [hammer.position[0] + mainObject.moveRange, hammer.position[1], hammer.position[2]];
-                        hammer.moveProgress = 0.0;
-                        hammer.isMoving = true;
-
-                        hammer.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-                    }
-                }
-                else 
-                {
-                    Utils.printToLog("game-log", "You can't move there");
-                }
-            }
-        }
-
-        if (event.code === 'KeyA') 
-        {
-            if (playerTurn && !mainObject.isMoving && mainObject.numMoves !== 0) 
-            {
-                console.log("interaction A");
-                mainObject.startPos = mainObject.position;
-                mainObject.targetPos = [mainObject.position[0], mainObject.position[1], mainObject.position[2] - mainObject.moveRange];
-                
-                if (Utils.checkMoveFloor(mainObject.startPos, mainObject.targetPos, floorMatrix, rows, cols))
-                {
-                    mainObject.moveProgress = 0.0;
-                    mainObject.isMoving = true;
-                    mainObject.numMoves -= 1;
-
-                    mainObject.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-
-                    if (chestOpened)
-                    {
-                        hammer.startPos = hammer.position;
-                        hammer.targetPos = [hammer.position[0], hammer.position[1], hammer.position[2] - mainObject.moveRange];
-                        hammer.moveProgress = 0.0;
-                        hammer.isMoving = true;
-
-                        hammer.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-                    }
-                }
-                else 
-                {
-                    Utils.printToLog("game-log", "You can't move there");
-                }
-            }
-        }
-
-        if (event.code === 'KeyS') 
-        {
-            if (playerTurn && !mainObject.isMoving && mainObject.numMoves !== 0)
-            {
-                console.log("interaction S");
-                mainObject.startPos = mainObject.position;
-                mainObject.targetPos = [mainObject.position[0] - mainObject.moveRange, mainObject.position[1], mainObject.position[2]];
-                
-                if (Utils.checkMoveFloor(mainObject.startPos, mainObject.targetPos, floorMatrix, rows, cols))
-                {
-                    mainObject.moveProgress = 0.0;
-                    mainObject.isMoving = true;
-                    mainObject.numMoves -= 1;
-
-                    mainObject.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-
-                    if (chestOpened)
-                    {
-                        hammer.startPos = hammer.position;
-                        hammer.targetPos = [hammer.position[0] - mainObject.moveRange, hammer.position[1], hammer.position[2]];
-                        hammer.moveProgress = 0.0;
-                        hammer.isMoving = true;
-
-                        hammer.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-                    }
-                }
-                else 
-                {
-                    Utils.printToLog("game-log", "You can't move there");
-                }
-            }
-        }
-
-        if (event.code === 'KeyD') 
-        {
-            if (playerTurn && !mainObject.isMoving && mainObject.numMoves !== 0) 
-            {
-                console.log("interaction D");
-                mainObject.startPos = mainObject.position;
-                mainObject.targetPos = [mainObject.position[0], mainObject.position[1], mainObject.position[2] + mainObject.moveRange];
-                
-                if (Utils.checkMoveFloor(mainObject.startPos, mainObject.targetPos, floorMatrix, rows, cols))
-                {
-                    mainObject.moveProgress = 0.0;
-                    mainObject.isMoving = true;
-                    mainObject.numMoves -= 1;
-
-                    mainObject.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-
-                    if (chestOpened)
-                    {
-                        hammer.startPos = hammer.position;
-                        hammer.targetPos = [hammer.position[0], hammer.position[1], hammer.position[2] + mainObject.moveRange];
-                        hammer.moveProgress = 0.0;
-                        hammer.isMoving = true;
-
-                        hammer.setFacingDirection(mainObject.targetPos, - Math.PI / 2);
-                    }
-                }
-                else 
-                {
-                    Utils.printToLog("game-log", "You can't move there");
-                }
-            }
-        }
-
-        // SETTINGS MENU
-        if (event.code === 'Escape') 
-        {
-            toggleMenu();
-        }
-
-        // NEXT TURN
-        if (event.code === 'KeyN')
-        {
-            nextTurn();
-        }
-        
-        //console.log(event.code)
-    },
-    false);
+    }
 
     closeSettingsButton.addEventListener("click", () => 
     {
@@ -560,11 +520,16 @@ function main()
         }
     }
 
+    resetSettingsButton.addEventListener("click", () =>
+    {
+        window.location.reload();
+    });
 
     let ratsMoving = [];
     nextTurnButton.addEventListener("click", () =>
     {
-        nextTurn();
+        if (controlsTesting.turnBased)
+            nextTurn();
     },
     false);
 
@@ -579,21 +544,26 @@ function main()
             // BAT AND LIGHT
             batCore.startPos = batCore.position;
             let patrolTargetBat = batCore.calculateWaypointStep();
-            if (Utils.checkMoveFloor(batCore.startPos, patrolTargetBat, ceilingMatrix, rows, cols))
-            {
+            //if (Utils.checkMoveFloor(batCore.startPos, patrolTargetBat, ceilingMatrix, rows, cols))
+            //{
                 batCore.targetPos = patrolTargetBat;
                 batCore.moveProgress = 0.0;
                 batCore.isMoving = true;
                 batCore.setFacingDirection(patrolTargetBat, 0);
                 batLeftWing.setFacingDirection(patrolTargetBat, 0);
                 batRightWing.setFacingDirection(patrolTargetBat, 0);
-            }
+            //}
 
             // RATS
             let randomInt;
             ratsMoving = [];
             for (let i = 0; i < rats.length; i++)
             {
+                if(rats[i].isDead) continue;
+
+                //rats[i].position[0] = Math.round(rats[i].position[0] / 2) * 2;
+                //rats[i].position[2] = Math.round(rats[i].position[2] / 2) * 2;
+
                 rats[i].startPos = rats[i].position;
 
                 let directions = [0, 1, 2, 3];
@@ -638,6 +608,71 @@ function main()
         }
     }
 
+    controlPanelButton.addEventListener("click", () =>
+    {
+        toggleMenu();
+    },
+    false);
+
+    WButton.addEventListener("click", () => 
+    {
+        const fx = Math.round(Math.cos(mainObject.currentFacingAngle));
+        const fz = - Math.round(Math.sin(mainObject.currentFacingAngle));
+
+        moveMainObject(fx, fz);
+    },
+    false);
+
+    AButton.addEventListener("click", () => 
+    {
+        const lx = Math.round(Math.cos(mainObject.currentFacingAngle + Math.PI / 2));
+        const lz = - Math.round(Math.sin(mainObject.currentFacingAngle + Math.PI / 2));
+
+        moveMainObject(lx, lz);
+    },
+    false);
+
+    SButton.addEventListener("click", () => 
+    {
+        const bx = - (Math.round(Math.cos(mainObject.currentFacingAngle)));
+        const bz = - (- Math.round(Math.sin(mainObject.currentFacingAngle)));
+
+        moveMainObject(bx, bz);
+    },
+    false);
+
+    DButton.addEventListener("click", () => 
+    {
+        const rx = Math.round(Math.cos(mainObject.currentFacingAngle - Math.PI / 2));
+        const rz = - Math.round(Math.sin(mainObject.currentFacingAngle - Math.PI / 2));
+
+        moveMainObject(rx, rz);
+    },
+    false);
+
+    EButton.addEventListener("click", () => 
+    {
+        interactionMainObject();
+    },
+    false);
+
+    let isHudVisible = false;
+    hudButton.addEventListener("click", () => 
+    {
+        isHudVisible = !isHudVisible;
+
+        if (isHudVisible)
+        {
+            gameHud.classList.remove('hidden');
+            hudButton.innerHTML = 'Hide HUD';
+        }
+        else 
+        {
+            gameHud.classList.add('hidden');
+            hudButton.innerHTML = 'Display HUD';
+        }
+    },
+    false);
 
     //#endregion
 
@@ -651,7 +686,6 @@ function main()
             mainObject.updateRotation(deltaTimePhysics);
             hammer.updateRotation(deltaTimePhysics);
         }
-
         
 
         if (hammer.isRotating)
@@ -667,6 +701,73 @@ function main()
 
     function enemiesDoStep()
     {
+        if (!controlsTesting.turnBased)
+        {
+            if (!batCore.isMoving)
+            {
+                batCore.startPos = batCore.position;
+                let patrolTargetBat = batCore.calculateWaypointStep();
+                if (Utils.checkMoveFloor(batCore.startPos, patrolTargetBat, ceilingMatrix, rows, cols))
+                {
+                    batCore.targetPos = patrolTargetBat;
+                    batCore.moveProgress = 0.0;
+                    batCore.isMoving = true;
+                    batCore.setFacingDirection(patrolTargetBat, 0);
+                    batLeftWing.setFacingDirection(patrolTargetBat, 0);
+                    batRightWing.setFacingDirection(patrolTargetBat, 0);
+                }
+            }
+
+            let randomInt;
+            for (let i = 0; i < rats.length; i++)
+            {
+                if (rats[i].isDead) continue;
+
+                if (!rats[i].isMoving)
+                {
+                    rats[i].startPos = rats[i].position;
+
+                    let directions = [0, 1, 2, 3];
+                    for (let j = directions.length - 1; j > 0; j--)
+                    {
+                        const k = Math.floor(Math.random() * (j + 1));
+                        [directions[j], directions[k]] = [directions[k], directions[j]];
+                    }
+
+                    let foundValidMove = false;
+                    for (let d = 0; d < directions.length; d++)
+                    {
+                        let dir = directions[d];
+                        let tempTarget = [rats[i].position[0], rats[i].position[1], rats[i].position[2]];
+
+                        if (dir === 0) tempTarget[0] += rats[i].moveRange;      // Right
+                        else if (dir === 1) tempTarget[0] -= rats[i].moveRange; // Left
+                        else if (dir === 2) tempTarget[2] += rats[i].moveRange; // Forward
+                        else if (dir === 3) tempTarget[2] -= rats[i].moveRange; // Backward
+
+                        if (Utils.checkMoveFloor(rats[i].startPos, tempTarget, floorMatrix, rows, cols))
+                        {
+                            rats[i].targetPos = tempTarget;
+                            rats[i].moveProgress = 0.0;
+                            rats[i].isMoving = true;
+                            foundValidMove = true;
+
+                            rats[i].setFacingDirection(tempTarget, 0);
+
+                            break;
+                        }
+                    }
+
+                    if (!foundValidMove)
+                    {
+                        ratsMoving[i] = false;
+                    }
+                }
+            }
+            
+        }
+
+
         if(batCore.isMoving)
         {
             batCore.moveStraight(deltaTimePhysics);
@@ -683,7 +784,7 @@ function main()
         let isAnyRatMoving = false;
         for (let i = 0; i < rats.length; i++)
         {
-            if (ratsMoving[i])
+            if (rats[i].isMoving)
             {
                 rats[i].moveStraight(deltaTimePhysics);
                 rats[i].updateRotation(deltaTimePhysics);
@@ -699,7 +800,7 @@ function main()
             }
         }
 
-        if (!isAnyRatMoving)
+        if (controlsTesting.turnBased && !isAnyRatMoving)
         {
             playerTurn = true;
             ratsMoving = [];
@@ -734,8 +835,13 @@ function main()
         gl.disable(gl.CULL_FACE);
         mainObject.draw(gl, lightShadowBumpProgramInfo, generalUniforms);
 
-        walls.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
+        chestTop.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
+        chestBot.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
+        gl.enable(gl.CULL_FACE);
+
         ceiling.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
+        walls.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
+
         for (let i = 0; i < 4; i++)
         {
             let modelMatrix = m4.identity();
@@ -743,10 +849,6 @@ function main()
             pillar.modelmatrix = modelMatrix;
             pillar.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
         }
-
-        chestTop.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
-        chestBot.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
-        gl.enable(gl.CULL_FACE);
 
         if (chestOpened) hammer.draw(gl, lightShadowBumpShininessMetalnessProgramInfo, generalUniforms);
         
@@ -767,6 +869,11 @@ function main()
             modelMatrix = m4.yRotate(modelMatrix, - i * Math.PI / 8);
             skeleton.modelmatrix = modelMatrix;
             skeleton.draw(gl, programInfo, generalUniforms);
+        }
+
+        for (let i = 0; i < paintings.length; i++)
+        {
+            paintings[i].draw(gl, programInfo, generalUniforms);
         }
     }
         
@@ -870,14 +977,23 @@ function main()
 
         while (accumulator >= deltaTimePhysics)
         {
-            if (playerTurn)
+            /*if (controlsTesting.turnBased)
+            {
+                if (playerTurn)
+                {
+                    playerDoStep();
+                }   
+                else 
+                {
+                    enemiesDoStep();
+                }
+            }
+            else */
             {
                 playerDoStep();
-            }
-            else 
-            {
                 enemiesDoStep();
             }
+            
 
             accumulator -= deltaTimePhysics;
             toUpdate = true;
@@ -900,23 +1016,19 @@ function defineGui(controlsCamera, controlsLighting, controlsTesting)
     const cameraFolder = gui.addFolder('Camera');
     cameraFolder.add(controlsCamera, "zNear").min(1).max(10).step(1);
     cameraFolder.add(controlsCamera,"zFar").min(1).max(100).step(1);
-    cameraFolder.add(controlsCamera,"D").min(0).max(4).step(1);
+    cameraFolder.add(controlsCamera,"D").min(1).max(5).step(1);
     cameraFolder.add(controlsCamera,"theta").min(0).max(6.28).step(dr);
     cameraFolder.add(controlsCamera,"phi").min(0).max(3.14).step(dr);
     cameraFolder.add(controlsCamera,"fieldOfView").min(10).max(120).step(5);
     cameraFolder.open();
 
     const lightingFolder = gui.addFolder('Lighting');
-    lightingFolder.add(controlsLighting, "x", -10, 10).step(1);
-    lightingFolder.add(controlsLighting, "y", -10, 10).step(1);
-    lightingFolder.add(controlsLighting, "z", -10, 10).step(1);
     lightingFolder.add(controlsLighting, "fieldOfView").min(10).max(240).step(5);
     lightingFolder.add(controlsLighting, "bias", -0.1, 0.1).step(0.0001);
     lightingFolder.open();
 
     const testFolder = gui.addFolder("Testing");
-    testFolder.add(controlsTesting, "moveMainObject");
-    testFolder.add(controlsTesting, "followMainObject");
+    testFolder.add(controlsTesting, "turnBased");
     testFolder.open();
 }
 

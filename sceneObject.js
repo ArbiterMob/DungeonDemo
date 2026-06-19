@@ -52,8 +52,12 @@ export class SceneObject
     isPatrolling = false;
 
     currentFacingAngle = 0.0;
+    startFacingAngle = 0.0;
     targetFacingAngle = 0.0;
-    rotationSpeed = 5.0;
+    rotationFaceDuration = 0.5;
+    rotationFaceProgress = 0.0;
+
+    //rotationSpeed = 5.0;
 
     isRotating = false;
     pivotPoint = [0, 0, 0];
@@ -122,6 +126,9 @@ export class SceneObject
 
     setFacingDirection(targetPos, adjustAngle)
     {
+        this.startFacingAngle = this.currentFacingAngle;
+        this.rotationFaceProgress = 0.0;
+
         let dx = targetPos[0] - this.position[0];
         let dz = targetPos[2] - this.position[2];
         this.targetFacingAngle = Math.atan2(dx, dz) + adjustAngle; 
@@ -191,9 +198,22 @@ export class SceneObject
 
     updateRotation(deltaTimePhysics)
     {
-        let difference = this.targetFacingAngle - this.currentFacingAngle;
+        /*let difference = this.targetFacingAngle - this.currentFacingAngle;
         let shortestAngle = Math.atan2(Math.sin(difference), Math.cos(difference));
-        this.currentFacingAngle += shortestAngle * this.rotationSpeed * deltaTimePhysics;
+        this.currentFacingAngle += shortestAngle * this.rotationSpeed * deltaTimePhysics;*/
+
+        this.rotationFaceProgress += (deltaTimePhysics / this.rotationFaceDuration);
+
+        if (this.rotationFaceProgress >= 1.0)
+        {
+            this.rotationFaceProgress = 1.0;
+        }
+
+        let p = this.rotationFaceProgress;
+        
+        let difference = this.targetFacingAngle - this.startFacingAngle;
+        let shortestAngle = Math.atan2(Math.sin(difference), Math.cos(difference));
+        this.currentFacingAngle = this.startFacingAngle + shortestAngle * p;
     }
 
     calculateWaypointStep()
@@ -222,6 +242,8 @@ export class SceneObject
         {
             tempTarget[2] += Math.sign(distZ) * this.moveRange;
         }
+
+        //console.log(target, distX, distZ, tempTarget);
 
         return tempTarget;
     }
