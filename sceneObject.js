@@ -222,6 +222,9 @@ export class SceneObject
         let distX = target[0] - this.position[0];
         let distZ = target[2] - this.position[2];
 
+        //console.log("%%%%%%%");
+        //console.log(this.position, distX, distZ);
+
         if (Math.abs(distX) < 0.1 && Math.abs(distZ) < 0.1)
         {
             this.currentWaypointIndex += 1;
@@ -234,6 +237,8 @@ export class SceneObject
 
         let tempTarget = [this.position[0], this.position[1], this.position[2]];
 
+        //console.log(Math.abs(distX), Math.abs(distZ));
+
         if (Math.abs(distX) > 0.1)
         {
             tempTarget[0] += Math.sign(distX) * this.moveRange;
@@ -244,6 +249,7 @@ export class SceneObject
         }
 
         //console.log(target, distX, distZ, tempTarget);
+        //console.log("%%%%%%%");
 
         return tempTarget;
     }

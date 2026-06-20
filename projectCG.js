@@ -161,6 +161,7 @@ function main()
     }
 
     let rats = [];
+    let isAnyRatMoving = false;
     //let rat = new SceneObject("resources/data/rat/rat.obj");
     const ratPositions = 
     [
@@ -407,7 +408,7 @@ function main()
         // NEXT TURN
         if (event.code === 'Space')
         {
-            if (controlsTesting.turnBased)
+            if (controlsTesting.turnBased && !isAnyRatMoving && !batCore.isMoving)
                 nextTurn();
         }
         
@@ -464,18 +465,25 @@ function main()
                     console.log(rats[i].position);
                     console.log(mainObject.position);
                     console.log("%%%%%%%");*/
+
                     if(
                         !rats[i].isDead &&
-                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0]) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2] - 2)) ||
+                        ((Math.round(mainObject.position[0]) === Math.round(rats[i].position[0]) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2] - 2)) ||
                         (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0]) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2] + 2)) ||
                         (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0] - 2) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2])) ||
-                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0] + 2) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2]))
+                        (Math.round(mainObject.position[0]) === Math.round(rats[i].position[0] + 2) && Math.round(mainObject.position[2]) === Math.round(rats[i].position[2])))
                     )
                     {
-                        floorMatrix[Math.round(rats[i].position[0] / 2) + Math.round(rats[i].position[2] / 2) * rows] = 1; //TODO -> check this
+                        //console.log(mainObject.position, rats[i].position, Math.round(rats[i].position[0]) / 2, Math.round(rats[i].position[2]) / 2);
+                        floorMatrix[Math.round(rats[i].targetPos[0]) / 2 + Math.round(rats[i].targetPos[2]) / 2 * rows] = 1; //TODO -> check this
                         rats[i].isDead = true;
                         currRats -= 1;
                         Utils.printToLog("game-log", "You have killed a rat: " + currRats + " rats remaining");
+
+                        if (currRats === 0)
+                        {
+                            Utils.printToLog("game-log", "You have killed all the rats!!");
+                        }
                     }
                 }
             }
@@ -707,15 +715,15 @@ function main()
             {
                 batCore.startPos = batCore.position;
                 let patrolTargetBat = batCore.calculateWaypointStep();
-                if (Utils.checkMoveFloor(batCore.startPos, patrolTargetBat, ceilingMatrix, rows, cols))
-                {
+                //if (Utils.checkMoveFloor(batCore.startPos, patrolTargetBat, ceilingMatrix, rows, cols))
+                //{
                     batCore.targetPos = patrolTargetBat;
                     batCore.moveProgress = 0.0;
                     batCore.isMoving = true;
                     batCore.setFacingDirection(patrolTargetBat, 0);
                     batLeftWing.setFacingDirection(patrolTargetBat, 0);
                     batRightWing.setFacingDirection(patrolTargetBat, 0);
-                }
+                //}
             }
 
             let randomInt;
@@ -781,7 +789,7 @@ function main()
             batRightWing.updateRotation(deltaTimePhysics);
         }
 
-        let isAnyRatMoving = false;
+        isAnyRatMoving = false;
         for (let i = 0; i < rats.length; i++)
         {
             if (rats[i].isMoving)
@@ -800,7 +808,7 @@ function main()
             }
         }
 
-        if (controlsTesting.turnBased && !isAnyRatMoving)
+        if (controlsTesting.turnBased && !isAnyRatMoving && !batCore.isMoving)
         {
             playerTurn = true;
             ratsMoving = [];
