@@ -54,24 +54,9 @@
             padding: 10px;
             border-radius: 8px;
             overflow-y: auto;
-            /* Adds a scrollbar if messages exceed max-height */
             z-index: 5;
             pointer-events: auto;
-            /* Allows the user to scroll the log */
         }
-
-        /*#next-turn {
-            display: block;
-    
-            position: absolute;
-    
-            top: 20px;
-            left: 20px;
-            z-index: 5;
-    
-            /*padding: 50px;
-            font-size: 16px;
-        }*/
 
         #hud-button {
             position: absolute;
@@ -87,8 +72,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             padding: 20px;
             box-sizing: border-box;
             /* 'none' lets mouse clicks pass through the empty space to the 3D canvas below */
@@ -101,7 +86,6 @@
             justify-content: space-between;
         }
 
-        /* Make the buttons themselves clickable again */
         .hud-btn {
             pointer-events: auto;
             background-color: rgba(30, 30, 30, 0.7);
@@ -116,19 +100,8 @@
             transition: all 0.2s ease;
             text-transform: uppercase;
             backdrop-filter: blur(4px);
-            /* Adds a nice frosted glass effect behind buttons */
         }
 
-        /*.hud-btn:hover {
-            background-color: rgba(80, 80, 80, 0.9);
-            border-color: #aaa;
-        }
-
-        .hud-btn:active {
-            transform: scale(0.92);
-        }*/
-
-        /* Top bar alignment */
         .hud-top {
             position: absolute;
             top: 70px;
@@ -136,17 +109,13 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 10px;
-            /*justify-content: space-between;*/
-            /* Spreads Menu to left, Next Turn to right */
         }
 
-        /* Give Next Turn a distinct color */
         .highlight-btn {
             background-color: rgba(52, 152, 219, 0.7);
             border-color: #2980b9;
         }
 
-        /* Bottom bar alignment */
         .hud-bottom {
             position: absolute;
             bottom: 20px;
@@ -157,7 +126,6 @@
             gap: 30px;
         }
 
-        /* Virtual D-Pad Styling */
         .d-pad {
             display: flex;
             flex-direction: column;
@@ -179,15 +147,12 @@
             align-items: center;
             font-size: 18px;
             border-bottom-width: 4px;
-            /* Makes it look like a physical keyboard key */
         }
 
-        /* Action Button Styling */
         .action-btn {
             height: 50px;
             border-bottom-width: 4px;
             background-color: rgba(46, 204, 113, 0.7);
-            /* Green color for positive action */
             border-color: #27ae60;
         }
 
@@ -212,9 +177,6 @@
             pointer-events: auto;
         }
 
-
-
-
         #settings-menu h2 {
             margin-top: 0;
             padding-bottom: 15px;
@@ -223,7 +185,6 @@
             letter-spacing: 2px;
         }
 
-        /* List layout */
         .controls-list {
             display: flex;
             flex-direction: column;
@@ -244,7 +205,6 @@
             gap: 5px;
         }
 
-        /* 2D Graphical Keys Styling */
         .key-graphic {
             background-color: #f0f0f0;
             color: #333;
@@ -252,23 +212,10 @@
             border-radius: 6px;
             font-weight: bold;
             font-size: 14px;
-            /* This creates the 2D "button" illusion */
-            border: 1px solid #ccc;
-            border-bottom: 4px solid #b3b3b3;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-            display: inline-block;
-            min-width: 20px;
-            text-align: center;
         }
 
         .spacebar {
             min-width: 100px;
-        }
-
-        .mouse-icon {
-            background-color: #e3f2fd;
-            border-color: #bbdefb;
-            border-bottom-color: #90caf9;
         }
 
         .control-desc {
@@ -288,14 +235,6 @@
             transition: background-color 0.2s, transform 0.1s;
             margin-top: 10px;
         }
-
-        /*#close-settings-menu:hover {
-            background-color: #c0392b;
-        }
-    
-        #close-settings-menu:active {
-            transform: scale(0.95);
-        }*/
 
         #reset-settings-menu {
             background-color: #e74c3c;
@@ -404,86 +343,6 @@
     </div>
 </body>
 
-    <script id="lightShadowBumpShininessMetalnessFragment" type="x-shader/x-fragment">
-        precision mediump float;
-
-        varying vec2 v_texCoord;
-        varying vec4 v_projectedTexCoord;
-        varying vec3 v_surfaceToLight;
-        varying vec3 v_surfaceToView;
-        
-        uniform sampler2D u_texture;
-        uniform sampler2D u_normalMap;
-        uniform sampler2D u_roughnessMap;
-        uniform sampler2D u_metalnessMap;
-
-        uniform sampler2D u_projectedTexture;
-        uniform float u_bias;
-        
-        uniform vec3 u_lightDirection;
-        uniform float u_innerLimit;
-        uniform float u_outerLimit;
-
-        //uniform vec3 u_Ka;        // Ka
-        //uniform vec3 u_Kd;        // Kd
-        //uniform float u_Ns;         // Ns
-
-        varying vec3 v_T;
-        varying vec3 v_B;
-        varying vec3 v_N;
-
-        void main()
-        {            
-            mat3 TBN = mat3(v_T, v_B, v_N);
-            vec3 normal = texture2D(u_normalMap, v_texCoord).rgb;
-            normal = normal * 2.0 - 1.0;
-            normal = normalize(TBN * normal);
-            
-            if (!gl_FrontFacing) normal = -normal;
-
-            vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
-            vec3 surfaceToViewDirection = normalize(v_surfaceToView);
-            vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
-
-            float dotFromDirection = dot(surfaceToLightDirection, u_lightDirection);
-            float limitRange = u_innerLimit - u_outerLimit;
-            float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);
-
-            float roughness = texture2D(u_roughnessMap, v_texCoord).r;
-            float shininess = 2.0 + (1.0 - roughness) * 254.0;
-
-            float metalness = texture2D(u_metalnessMap, v_texCoord).r;
-
-            vec4 texColor = texture2D(u_texture, v_texCoord);
-
-            vec3 specularColor = mix(vec3(0.04), texColor.rgb, metalness);
-
-            float lambertian = max(dot(normal, surfaceToLightDirection), 0.0);
-            float light = inLight * lambertian;
-            float specular = 0.0;
-            if (lambertian > 0.0) specular = inLight * pow(max(dot(normal, halfVector), 0.0), shininess);
-
-            vec3 projectedTexCoord = v_projectedTexCoord.xyz / v_projectedTexCoord.w;
-            float currentDepth = projectedTexCoord.z + u_bias;
-            
-            bool inRange = 
-                projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
-                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0 &&
-                projectedTexCoord.z >= 0.0 && projectedTexCoord.z <= 1.0;
-
-            float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
-            float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
-
-            
-            gl_FragColor = vec4(
-                texColor.rgb* 0.3 +
-                texColor.rgb * light * shadowLight +
-                specularColor * specular * shadowLight,
-                texColor.a
-            );
-        }
-    </script>
-
     <script id="lightShadowBumpShininessFragment" type="x-shader/x-fragment">
         precision mediump float;
 
@@ -505,7 +364,7 @@
 
         //uniform vec3 u_Ka;        // Ka
         //uniform vec3 u_Kd;        // Kd
-        //uniform float u_Ns;         // Ns
+        //uniform float u_Ns;       // Ns
 
         varying vec3 v_T;
         varying vec3 v_B;
@@ -529,7 +388,7 @@
             float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);
 
             float roughness = texture2D(u_roughnessMap, v_texCoord).r;
-            float shininess = 2.0 + (1.0 - roughness) * 254.0;
+            float shininess = 1.0 + (1.0 - roughness) * 250.0;
 
             float lambertian = max(dot(normal, surfaceToLightDirection), 0.0);
             float light = inLight * lambertian;
@@ -541,8 +400,7 @@
             
             bool inRange = 
                 projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
-                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0 &&
-                projectedTexCoord.z >= 0.0 && projectedTexCoord.z <= 1.0;
+                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0;
 
             float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
             float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
@@ -643,6 +501,7 @@
             
             if (!gl_FrontFacing) normal = -normal;
 
+
             vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
             vec3 surfaceToViewDirection = normalize(v_surfaceToView);
             vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
@@ -661,8 +520,7 @@
             
             bool inRange = 
                 projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
-                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0 &&
-                projectedTexCoord.z >= 0.0 && projectedTexCoord.z <= 1.0;
+                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0;
 
             float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
             float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;
@@ -760,12 +618,8 @@
             float currentDepth = projectedTexCoord.z + u_bias;
             
             bool inRange = 
-                projectedTexCoord.x >= 0.0 &&
-                projectedTexCoord.x <= 1.0 &&
-                projectedTexCoord.y >= 0.0 &&
-                projectedTexCoord.y <= 1.0 &&
-                projectedTexCoord.z >= 0.0 &&
-                projectedTexCoord.z <= 1.0;
+                projectedTexCoord.x >= 0.0 && projectedTexCoord.x <= 1.0 &&
+                projectedTexCoord.y >= 0.0 && projectedTexCoord.y <= 1.0;
 
             float projectedDepth = texture2D(u_projectedTexture, projectedTexCoord.xy).r;
             float shadowLight = (inRange && projectedDepth <= currentDepth) ? 0.0 : 1.0;

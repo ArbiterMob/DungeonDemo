@@ -56,8 +56,7 @@ export class SceneObject
     targetFacingAngle = 0.0;
     rotationFaceDuration = 0.5;
     rotationFaceProgress = 0.0;
-
-    //rotationSpeed = 5.0;
+    shortestAngle = 0;
 
     isRotating = false;
     pivotPoint = [0, 0, 0];
@@ -79,7 +78,7 @@ export class SceneObject
 
     //#region CONSTRUCTOR
 
-    constructor(/*gl, shaderIds,*/ sourceMesh/*, generalInfo*/)
+    constructor(sourceMesh)
     {
         this.#mesh = { sourceMesh: sourceMesh };
         this.#modelMatrix = m4.identity();
@@ -132,6 +131,9 @@ export class SceneObject
         let dx = targetPos[0] - this.position[0];
         let dz = targetPos[2] - this.position[2];
         this.targetFacingAngle = Math.atan2(dx, dz) + adjustAngle; 
+
+        let difference = this.targetFacingAngle - this.startFacingAngle;
+        this.shortestAngle = Math.atan2(Math.sin(difference), Math.cos(difference));
     }
 
     //#endregion
@@ -147,11 +149,6 @@ export class SceneObject
             this.#modelMatrix[13],
             this.#modelMatrix[14]
         ];
-    }
-
-    scale(value)
-    {
-        this.#modelMatrix = m4.scale(this.#modelMatrix, value, value, value);
     }
 
     moveStraight(deltaTimePhysics)
@@ -170,7 +167,6 @@ export class SceneObject
         let currentZ = this.startPos[2] + (this.targetPos[2] - this.startPos[2]) * p;
 
         this.position = [currentX, this.position[1], currentZ];
-        
     }
 
     rotatePivot(deltaTimePhysics, turnBackUp)
@@ -198,10 +194,6 @@ export class SceneObject
 
     updateRotation(deltaTimePhysics)
     {
-        /*let difference = this.targetFacingAngle - this.currentFacingAngle;
-        let shortestAngle = Math.atan2(Math.sin(difference), Math.cos(difference));
-        this.currentFacingAngle += shortestAngle * this.rotationSpeed * deltaTimePhysics;*/
-
         this.rotationFaceProgress += (deltaTimePhysics / this.rotationFaceDuration);
 
         if (this.rotationFaceProgress >= 1.0)
@@ -211,9 +203,7 @@ export class SceneObject
 
         let p = this.rotationFaceProgress;
         
-        let difference = this.targetFacingAngle - this.startFacingAngle;
-        let shortestAngle = Math.atan2(Math.sin(difference), Math.cos(difference));
-        this.currentFacingAngle = this.startFacingAngle + shortestAngle * p;
+        this.currentFacingAngle = this.startFacingAngle + this.shortestAngle * p;
     }
 
     calculateWaypointStep()
@@ -330,12 +320,6 @@ export class SceneObject
         {
             this.#roughnessMap = await this.loadTexture(gl, this.objectData.mapNs);
         }
-
-        if (this.objectData.mapRefl != null)
-        {
-            this.#metalnessMap = await this.loadTexture(gl, this.objectData.mapRefl);
-        }
-        
     }
     
     initializeAttributes(gl)
@@ -395,22 +379,8 @@ export class SceneObject
         {
             ...generalUniforms,
             u_modelMatrix: drawMatrix,
-            /*u_viewMatrix: this.#generalInfo.viewMatrix,
-            u_projectionMatrix: this.#generalInfo.projectionMatrix,*/
             u_normalMatrix: normalMatrix,
-
             u_texture: this.#texture,
-            //u_texture: this.objectData.texture,
-            //u_normalMap: this.#normalMap,
-            
-            /*u_lightPosition: this.#generalInfo.lightPosition,
-            u_cameraPosition: this.#generalInfo.cameraPosition,*/
-            /*u_Ka: this.objectData.ambient,
-            u_Kd: this.objectData.diffuse,
-            u_Ks: this.objectData.specular,
-            u_Ke: this.objectData.emissive,
-            u_Ns: this.objectData.shininess,
-            u_Ni: this.objectData.opacity,*/
         }
 
         if (this.objectData.mapBump != null)
@@ -432,7 +402,6 @@ export class SceneObject
             uniforms.u_metalnessMap = this.#metalnessMap;
         }
         
-
         webglUtils.setUniforms(programInfo.uniformSetters, uniforms);
 
         //#endregion

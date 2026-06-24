@@ -33,7 +33,7 @@ function main()
     const ext = gl.getExtension('WEBGL_depth_texture');
     if (!ext) 
     {
-        alert('need WEBGL_depth_texture');  // eslint-disable-line
+        alert('need WEBGL_depth_texture');
     }
 
     const depthTexture = gl.createTexture();
@@ -70,7 +70,6 @@ function main()
 
     const lightShadowBumpProgramInfo = webglUtils.createProgramInfo(gl, ['lightShadowBumpVertex', 'lightShadowBumpFragment']);
     const lightShadowBumpShininessProgramInfo = webglUtils.createProgramInfo(gl, ['lightShadowBumpVertex', 'lightShadowBumpShininessFragment']);
-    const lightShadowBumpShininessMetalnessProgramInfo = webglUtils.createProgramInfo(gl, ['lightShadowBumpVertex', 'lightShadowBumpShininessMetalnessFragment']);
 
     let numTurn = 1;
 
@@ -144,8 +143,6 @@ function main()
     floorMatrix[mainObject.position[0] / 2 + mainObject.position[2] / 2 * rows] = 0;
 
     let skeleton = new SceneObject("resources/data/skeleton/skeleton.obj");
-    //skeleton.position = [2, 0, 0];
-    //floorMatrix[skeleton.position[0] / 2 + skeleton.position[2] / 2 * rows] = 0
     const skeletonPositions = 
     [
         [2, 0, 4],
@@ -162,7 +159,6 @@ function main()
 
     let rats = [];
     let isAnyRatMoving = false;
-    //let rat = new SceneObject("resources/data/rat/rat.obj");
     const ratPositions = 
     [
         [7, 0, 0],
@@ -186,7 +182,7 @@ function main()
     chestTop.pivotPoint = [0.477224, 0.533019, 0.519912];
     let chestBot = new SceneObject("resources/data/chest/chest_bot.obj");
     chestBot.position = [chestPosition[0] * 2, 0, chestPosition[2] * 2];
-    floorMatrix[chestPosition[0] + chestPosition[2] * rows] = 0
+    floorMatrix[chestPosition[0] + chestPosition[2] * rows] = 0;
 
     const batWaypoints = 
     [
@@ -198,26 +194,15 @@ function main()
         [14, 0, 26],
         [14, 0, 2],
         [2, 0, 2],
-
-        /*[28, 0, 0],
-        [28, 0, 14],
-        [0, 0, 14],
-        [0, 0, 28],
-        [28, 0, 28],
-        [28, 0, 14],
-        [0, 0, 14],
-        [0, 0, 0]*/
     ];
     let batCore = new SceneObject("resources/data/bat/bat_core.obj");
     let batLeftWing = new SceneObject("resources/data/bat/bat_leftWing.obj");
     let batRightWing = new SceneObject("resources/data/bat/bat_rightWing.obj");
     batCore.waypoints = batWaypoints;
     batCore.isPatrolling = true;
-
     batCore.position = [2, 0, 2];
     batLeftWing.position = batCore.position;
     batRightWing.position = batCore.position;
-
 
     let bulb = new SceneObject("resources/data/bulb/bulb.obj");
     bulb.position = batCore.position;
@@ -234,8 +219,6 @@ function main()
         new SceneObject("resources/data/paintings/painting9.obj"),
         new SceneObject("resources/data/paintings/painting11.obj"),
     );
-
-    //const entities = [skeleton, rat];
 
     (async () => 
         {
@@ -373,8 +356,8 @@ function main()
         const lx = Math.round(Math.cos(mainObject.currentFacingAngle + Math.PI / 2));
         const lz = - Math.round(Math.sin(mainObject.currentFacingAngle + Math.PI / 2));
 
-        const bx = - fx;
-        const bz = - fz;
+        const bx = - Math.round(fx);
+        const bz = - Math.round(fz);
 
         const rx = Math.round(Math.cos(mainObject.currentFacingAngle - Math.PI / 2));
         const rz = - Math.round(Math.sin(mainObject.currentFacingAngle - Math.PI / 2));
@@ -420,7 +403,6 @@ function main()
     {
         if (playerTurn && !mainObject.isMoving && mainObject.numMoves > 0) 
         {
-            console.log("interaction D");
             mainObject.startPos = mainObject.position;
             mainObject.targetPos = [mainObject.position[0] + moveX * mainObject.moveRange, mainObject.position[1], mainObject.position[2] + moveZ * mainObject.moveRange];
                 
@@ -451,8 +433,6 @@ function main()
 
     function interactionMainObject()
     {
-        console.log("interaction E");
-
             if (chestOpened)
             {
                 hammer.rotationAngle = -90;
@@ -536,7 +516,7 @@ function main()
     let ratsMoving = [];
     nextTurnButton.addEventListener("click", () =>
     {
-        if (controlsTesting.turnBased)
+        if (controlsTesting.turnBased && !isAnyRatMoving && !batCore.isMoving)
             nextTurn();
     },
     false);
@@ -652,7 +632,7 @@ function main()
     DButton.addEventListener("click", () => 
     {
         const rx = Math.round(Math.cos(mainObject.currentFacingAngle - Math.PI / 2));
-        const rz = - Math.round(Math.sin(mainObject.currentFacingAngle - Math.PI / 2));
+        const rz = -Math.round( Math.sin(mainObject.currentFacingAngle - Math.PI / 2));
 
         moveMainObject(rx, rz);
     },
@@ -816,11 +796,9 @@ function main()
         
     }
 
-    function drawScene(projectionMatrix, cameraMatrix, textureMatrix, lightWorldMatrix, programInfo, lightShadowBumpProgramInfo, lightShadowBumpShininessProgramInfo, lightShadowBumpShininessMetalnessProgramInfo)
+    function drawScene(projectionMatrix, cameraMatrix, textureMatrix, lightWorldMatrix, programInfo, lightShadowBumpProgramInfo, lightShadowBumpShininessProgramInfo)
     {
         const viewMatrix = m4.inverse(cameraMatrix);
-
-        //gl.useProgram(programInfo.program);
 
         const generalUniforms = {
             u_viewMatrix: viewMatrix,
@@ -830,23 +808,19 @@ function main()
             u_projectedTexture: depthTexture,
             u_innerLimit: Math.cos(Utils.degToRad(controlsLighting.fieldOfView / 2 - 10)),
             u_outerLimit: Math.cos(Utils.degToRad(controlsLighting.fieldOfView / 2)),
-            u_lightDirection: lightWorldMatrix.slice(8, 11)/*.map(v => -v)*/,
-
-            //u_lightPosition: [controlsLighting.x, controlsLighting.y, controlsLighting.z],
+            u_lightDirection: lightWorldMatrix.slice(8, 11),
             u_lightPosition: lightPosition,
             u_cameraPosition: cameraMatrix.slice(12, 15)
         };
 
-        //if (!shadowPass) 
         floor.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
 
         gl.disable(gl.CULL_FACE);
-        mainObject.draw(gl, lightShadowBumpProgramInfo, generalUniforms);
-
         chestTop.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
         chestBot.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
         gl.enable(gl.CULL_FACE);
 
+        mainObject.draw(gl, lightShadowBumpProgramInfo, generalUniforms);
         ceiling.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
         walls.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
 
@@ -858,7 +832,7 @@ function main()
             pillar.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
         }
 
-        if (chestOpened) hammer.draw(gl, lightShadowBumpShininessMetalnessProgramInfo, generalUniforms);
+        if (chestOpened) hammer.draw(gl, lightShadowBumpShininessProgramInfo, generalUniforms);
         
         batCore.draw(gl, programInfo, generalUniforms);
         batLeftWing.draw(gl, programInfo, generalUniforms);
@@ -870,6 +844,11 @@ function main()
             if(!rats[i].isDead) rats[i].draw(gl, programInfo, generalUniforms);
         }
 
+        for (let i = 0; i < paintings.length; i++)
+        {
+            paintings[i].draw(gl, programInfo, generalUniforms);
+        }
+
         for (let i = 0; i < skeletonPositions.length; i++)
         {
             let modelMatrix = m4.identity();
@@ -877,11 +856,6 @@ function main()
             modelMatrix = m4.yRotate(modelMatrix, - i * Math.PI / 8);
             skeleton.modelmatrix = modelMatrix;
             skeleton.draw(gl, programInfo, generalUniforms);
-        }
-
-        for (let i = 0; i < paintings.length; i++)
-        {
-            paintings[i].draw(gl, programInfo, generalUniforms);
         }
     }
         
@@ -897,20 +871,13 @@ function main()
 
         // RENDER FOR SHADOW
         const lightWorldMatrix = m4.lookAt(
-            //[controlsLighting.x, controlsLighting.y, controlsLighting.z],
-            //bulb.position,
             lightPosition,
-            //[0, 0, 0], // TODO -> modify this!
             [lightPosition[0] - 1, 0, lightPosition[2] - 1],
             [0, 1, 0]
         );
 
         const lightProjectionMatrix = m4.perspective(
             Utils.degToRad(controlsLighting.fieldOfView),
-            /*aspect, //CHECK this if errors occur
-            controlsCamera.zNear,
-            controlsCamera.zFar*/
-            //3 / 2.4,
             aspect,
             0.5,
             40.0
@@ -927,8 +894,7 @@ function main()
             lightWorldMatrix,
             colorProgramInfo,
             colorProgramInfo,
-            colorProgramInfo,
-            colorProgramInfo,
+            colorProgramInfo
         );
 
         // RENDER FOR VIEW
@@ -950,7 +916,7 @@ function main()
         [  
             at[0] + controlsCamera.D * Math.sin(controlsCamera.phi) * Math.cos(controlsCamera.theta),
             at[1] + controlsCamera.D * Math.cos(controlsCamera.phi),
-            at[2] + controlsCamera.D * Math.sin(controlsCamera.phi) * Math.sin(controlsCamera.theta)
+            at[2] + controlsCamera.D * Math.sin(controlsCamera.phi) * Math.sin(controlsCamera.theta),
         ];
         const up = [0, 1, 0];
         let cameraMatrix = m4.lookAt(eye, at, up);
@@ -962,8 +928,7 @@ function main()
             lightWorldMatrix,
             lightShadowProgramInfo,
             lightShadowBumpProgramInfo,
-            lightShadowBumpShininessProgramInfo,
-            lightShadowBumpShininessMetalnessProgramInfo           
+            lightShadowBumpShininessProgramInfo
         );
     }
 
@@ -985,23 +950,9 @@ function main()
 
         while (accumulator >= deltaTimePhysics)
         {
-            /*if (controlsTesting.turnBased)
-            {
-                if (playerTurn)
-                {
-                    playerDoStep();
-                }   
-                else 
-                {
-                    enemiesDoStep();
-                }
-            }
-            else */
-            {
-                playerDoStep();
-                enemiesDoStep();
-            }
-            
+
+            playerDoStep();
+            enemiesDoStep();            
 
             accumulator -= deltaTimePhysics;
             toUpdate = true;
@@ -1035,7 +986,7 @@ function defineGui(controlsCamera, controlsLighting, controlsTesting)
     lightingFolder.add(controlsLighting, "bias", -0.1, 0.1).step(0.0001);
     lightingFolder.open();
 
-    const testFolder = gui.addFolder("Testing");
+    const testFolder = gui.addFolder("Gameplay");
     testFolder.add(controlsTesting, "turnBased");
     testFolder.open();
 }

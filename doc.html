@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relazione di Progetto: Applicazione Grafica 3D in WebGL</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        header {
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        h2 {
+            color: #2980b9;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 25px;
+        }
+        p, li {
+            text-align: justify;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+        }
+        code {
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            background-color: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre {
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            background-color: #2d3748;
+            color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: #f7fafc;
+            color: #2d3748;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .highlight {
+            background-color: #fffaf0;
+            border-left: 4px solid #dd6b20;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Progetto Modulo 1 - Fondamenti di Computer Graphics</h1>
+    <p><strong>DungeonDemo</strong></p>
+</header>
+
+<section>
+    <h2>1. Descrizione dell'applicazione</h2>
+    <p>
+        L'applicazione sviluppata consiste in una demo in terza persona, fortemente ispirata alle dinamiche del classico gioco
+        arcade <em>"Acchiappa la talpa"</em>, ma reinterpretata in chiave fantasy all'interno di un dungeon sotterraneo.
+        Il software sfrutta le API <strong>WebGL</strong> per il rendering in tempo reale di geometrie complesse,
+        l'applicazione di texture e la gestione dinamica dell'illuminazione e delle ombre.
+    </p>
+    <p>
+        Il giocatore controlla un <strong>fantasma (mainObject)</strong>, il cui scopo è ripulire la stanza del dungeon
+        eliminando tutti i <strong>ratti</strong> che si muovono liberamente e in modo imprevedibile sulla superficie di gioco.
+        All'inizio della partita, tramite l'interazione con una <strong>cassa</strong>,
+        il fantasma ottiene un <strong>martello</strong>, potendo così colpire i ratti.
+    </p>
+    <p>
+        L'atmosfera lugubre del dungeon è accentuata da elementi decorativi disposti nell'ambiente, tra cui scheletri
+        e quadri appesi lungo le pareti.
+        Una delle peculiarità scenografiche risiede nell'illuminazione: la sorgente luminosa principale non è statica,
+        bensì è ancorata rigidamente al modello di una <strong>lampadina</strong> posizionata sotto un <strong>pipistrello</strong>
+        che vola dinamicamente sopra l'area di gioco, proiettando coni di luce e ombre in continuo mutamento.
+    </p>
+</section>
+
+<section>
+    <h2>2. Spiegazione delle scelte effettuate</h2>
+    
+    <h3>2.1 Architettura software e la classe <code>SceneObject</code></h3>
+    <p>
+        Per garantire modularità, estensibilità e una netta separazione delle responsabilità, l'intera logica di gestione
+        degli elementi grafici è stata incapsulata all'interno della classe <code>SceneObject</code>.
+        Questa classe, utilizzando i file di utility <code>glm_utils.js</code>, <code>load2_mesh.js</code> e <code>webgl-utils.js</code>,
+        astrae la complessità di basso livello di WebGL, occupandosi autonomamente di:
+    </p>
+    <ul>
+        <li>Caricamento di mesh da file in formato obj</li>
+        <li>Inizializzazione, caricamento e binding delle texture grafiche (Diffuse, Bump, Roughness).</li>
+        <li>Allocazione dei buffer di memoria della GPU (VBO) e popolamento sistematico di <em>attributes</em> e <em>uniforms</em>
+            associati agli shader program attivi.</li>
+        <li>Gestione dello stato spaziale dell'oggetto tramite matrici di trasformazione affine (Traslazione, Rotazione).</li>
+    </ul>
+
+    <h3>2.2 Gestione delle Animazioni e Cinematica tramite Interpolazione Lineare</h3>
+    <p>
+        I movimenti degli oggetti non avvengono tramite variazioni discrete e istantanee,
+        ma sono gestiti mediante tecniche di <strong>interpolazione lineare (LERP)</strong> calcolate frame per frame
+        per garantire fluidità visiva indipendentemente dal frame rate. A tale scopo, sono stati implementati i seguenti algoritmi principali:
+    </p>
+    
+    <pre>// esempio di interpolazione lineare usato nel progetto
+moveStraight(deltaTimePhysics) 
+{
+    // seguendo la logica del tempo della fisica, il movimento viene aggiornato ogni deltaTimePhysics 
+    // rispetto a quanto si vuole farlo durare
+    this.moveProgress += (deltaTimePhysics / moveDuration);
+
+    // se il movimento è finito
+    if (this.moveProgress >= 1.0)
+    {
+        this.moveProgress = 1.0;
+        this.isMoving = false;
+    }
+
+    const p = this.moveProgress;
+
+    // interpolazione lineare della posizione
+    const currentX = this.startPosition[0] + (this.targetPosition[0] - this.startPosition[0]) * p;
+    const currentZ = this.startPosition[2] + (this.targetPosition[2] - this.startPosition[2]) * p;
+
+    this.position = [currentX, this.position[1], currentZ];
+}</pre>
+
+    <ul>
+        <li>
+            <code>moveStraight()</code>: Date le coordinate spaziali di partenza e di arrivo,
+            la funzione calcola la posizione intermedia dell'oggetto a ogni frame tramite interpolazione lineare.
+            Viene invocata per la traslazione fluida dei personaggi (ratti, pipistrello, bulbo, fantasma).
+        </li>
+        <li>
+            <code>calculateWaypointStep()</code>: Consente al pipistrello di muoversi lungo un percorso regolare predefinito.
+            Una volta inizializzati i waypoint globali all'interno dell'oggetto, questa funzione determina dinamicamente la posizione
+            successiva in direzione del waypoint di destinazione corrente.
+        </li>
+        <li>
+            <code>rotatePivot()</code>: Calcola l'angolo di rotazione incrementale attorno all'asse Z fino a un target predefinito,
+            tenendo conto di un punto di pivot geometrico. Questo metodo è fondamentale per l'animazione di apertura della cassa (<code>chestTop</code>)
+            e per il movimento di oscillazione del martello durante l'attacco.
+        </li>
+        <li>
+            <code>updateRotation()</code>: Gestisce la rotazione incrementale attorno all'asse verticale Y, permettendo agli oggetti in movimento
+            di orientarsi fluidamente verso la direzione di marcia intrapresa ed evitando rotazioni istantanee o innaturali. L'algoritmo calcola
+            la traiettoria angolare più breve (<em>shortestAngle</em>) per prevenire artefatti visivi dovuti allo scavalcamento dei 360 gradi:
+            
+            <pre>updateRotation(deltaTimePhysics)
+{
+    this.rotationFaceProgress += (deltaTimePhysics / this.rotationFaceDuration);
+
+    if (this.rotationFaceProgress >= 1.0)
+    {
+        this.rotationFaceProgress = 1.0;
+    }
+
+    let p = this.rotationFaceProgress;
+
+    this.currentFacingAngle = this.startFacingAngle + this.shortestAngle * p;
+}</pre>
+            Data la posizione di destinazione (targetPos) e quella attuale, l'angolo di target viene ricavato trigonometricamente come segue:
+            
+            <pre>setFacingDirection(targetPos, adjustAngle)
+{
+    this.startFacingAngle = this.currentFacingAngle;
+    this.rotationFaceProgress = 0.0;
+
+    let dx = targetPos[0] - this.position[0];
+    let dz = targetPos[2] - this.position[2];
+    this.targetFacingAngle = Math.atan2(dx, dz) + adjustAngle;
+
+    let difference = this.targetFacingAngle - this.startFacingAngle;
+    this.shortestAngle = Math.atan2(Math.sin(difference), Math.cos(difference));
+}</pre>
+        </li>
+    </ul>
+    
+    <!--<p>
+        I metodi sopra elencati sono strettamente legati a funzioni di inizializzazione dello stato, quali il setter <code>position(pos)</code> per
+        il cambiamento della posizione e <code>setFacingDirection(targetPos, adjustAngle)</code>, che determina la matrice di rotazione
+        basandosi sulla direzione dell'oggetto.
+    </p>-->
+
+    <h3>2.3 Il Loop di Rendering</h3>
+    <p>
+        Il Render Loop è strutturato rigorosamente in tre fasi sequenziali, 
+        ottimizzando le performance e la sincronizzazione temporale:
+    </p>
+    <ol>
+        <li><strong><code>update(currentTime)</code></strong>: Calcola il delta temporale rispetto al frame precedente (Time-based rendering).
+            Aggiorna le logiche fisiche e le posizioni interpolate degli oggetti, slegando la velocità di gioco dalla frequenza di refresh dello schermo (FPS).</li>
+        <li><strong><code>render()</code></strong>: Questa funzione sfrutta una tecnica di rendering multi-pass: effettua prima la passata di generazione
+            delle ombre (Shadow Pass) popolando la texture di profondità, e successivamente avvia la passata di rendering finale sulla scena visibile
+            dall'utente.</li>
+        <li><strong><code>draw()</code></strong>: Funzione helper deputata all'invocazione dei comandi
+            di disegno WebGL. Si occupa di inizializzare le variabili uniform comuni a tutti gli shader e di associare gli shader program specifici
+            agli oggetti corrispondenti.</li>
+    </ol>
+</section>
+
+<section>
+    <h2>3. Funzionalità previste ed Interattività</h2>
+    <p>
+        L'applicazione offre un elevato grado di interattività e configurazione, esponendo controlli sia tramite periferiche
+        fisiche (tastiera e mouse) sia mediante un'interfaccia grafica (HUD) sovrapposta al canvas WebGL.
+    </p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Input / Controllo</th>
+                <th>Azione Associata</th>
+                <th>Dettagli Tecnici</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Tasti WASD</strong></td>
+                <td>Movimento del MainObject</td>
+                <td>Calcolo dinamico della direzione di movimento basato su griglia locale.</td>
+            </tr>
+            <tr>
+                <td><strong>Tasto E</strong></td>
+                <td>Interazione con lo scenario</td>
+                <td>Apertura della cassa e attacco con martello.</td>
+            </tr>
+            <tr>
+                <td><strong>Mouse Drag / GUI</strong></td>
+                <td>Rotazione e Spostamento Camera</td>
+                <td>Modifica delle matrici di Vista.</td>
+            </tr>
+            <tr>
+                <td><strong>GUI turnBased switch</strong></td>
+                <td>Cambio modalità di gioco</td>
+                <td>Alternanza dinamica tra modalità a Turni e Tempo Reale.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>
+        L'interazione con gli elementi dello scenario si concretizza esclusivamente quando il <em>mainObject</em>
+        si trova in una delle quattro celle adiacenti all'oggetto bersaglio (4-connected).
+    </p>
+
+    <h3>3.1 Logica di Movimento sulla Griglia e Rilevamento delle Collisioni</h3>
+    <p>
+        Lo stato strutturale del dungeon viene preservato in memoria attraverso due matrici bidimensionali distinte, deputate a mappare
+        rispettivamente la disposizione degli elementi sul <strong>pavimento</strong> e sul <strong>soffitto</strong>. Il controllo spaziale
+        è governato dalla funzione di validazione <code>checkMoveFloor()</code> presente nel file <code>utils.js</code>: prima di
+        effettuare una traslazione, l'entità interroga la griglia e riceve un valore booleano (<code>true</code> se la casella di destinazione
+        è libera da ostacoli, <code>false</code> in caso contrario).
+    </p>
+    <ul>
+        <li>
+            <strong>Comportamento dei Ratti:</strong> Poiché il movimento dei ratti è randomico, qualora la casella
+            selezionata risulti occupata (<code>checkMoveFloor</code> restituisce <code>false</code>), viene testata immediatamente
+            un'altra direzione estratta casualmente. La selezione della direzione si basa sulla permutazione casuale di un array di indici direzionali
+            mediante il seguente frammento logico:
+            <pre>let directions = [0, 1, 2, 3]; 
+for (let j = directions.length - 1; j > 0; j--) 
+{ 
+    const k = Math.floor(Math.random() * (j + 1)); 
+    [directions[j], directions[k]] = [directions[k], directions[j]]; 
+}</pre>
+        </li>
+        <li>
+            <strong>Comportamento del mainObject:</strong> Per il fantasma guidato dall'utente, l'accesso a una casella occupata è vietato e
+            questo genera contestualmente un feedback visivo sul log testuale dell'HUD a schermo, notificando l'impossibilità di 
+            procedere in quel punto dello spazio.
+        </li>
+    </ul>
+
+    <div class="highlight">
+        <strong>Particolarità del movimento del mainObject:</strong> Il movimento del fantasma non segue assi globali statici, ma si affida a un sistema
+        di coordinate locali in cui i vettori di movimento (Avanti, Sinistra, Indietro, Destra) vengono calcolati a partire dall'angolo di rotazione
+        corrente sul piano XZ.
+        <pre>// Calcolo delle componenti vettoriali direzionali
+const fx = Math.cos(mainObject.currentFacingAngle); 
+const fz = - Math.sin(mainObject.currentFacingAngle); 
+
+const lx = Math.cos(mainObject.currentFacingAngle + Math.PI / 2); 
+const lz = - Math.sin(mainObject.currentFacingAngle + Math.PI / 2); 
+
+const bx = - fx; 
+const bz = - fz; 
+
+const rx = Math.cos(mainObject.currentFacingAngle - Math.PI / 2); 
+const rz = - Math.sin(mainObject.currentFacingAngle - Math.PI / 2);</pre>
+        Questo permette al fantasma di spostarsi con precisione nella direzione esatta verso cui il modello è orientato visivamente.
+    </div>
+</section>
+
+<section>
+    <h2>4. Particolarità tecniche</h2>
+    
+    <h3>4.1 Modellazione 3D (Blender)</h3>
+    <p>
+        Tutti i modelli poligonali presenti nella scena (<em>mainObject, hammer, chestTop, chestBot, rat, batCore, batLeftWing, 
+        batRightWing, lightBulb, skeleton, floor, pillar, ceiling e i vari paintings</em>) sono stati realizzati utilizzando il software
+        open-source <strong>Blender</strong>.
+    </p>
+    <p>
+        Per l'applicazione delle texture è stata eseguita una mappatura UV avanzata. 
+        È stata applicata la tecnica del <code>Make Seam</code> per definire i tagli strutturali sulle mesh e consentire uno sviluppo 
+        piano privo di distorsioni geometriche, coadiuvato dall'algoritmo <code>Project From View</code> (proiezione dei vertici UV 
+        correnti della mesh basata sulla vista prospettica 3D attiva).
+    </p>
+
+    <h3>4.2 Parsing del file materiali</h3>
+    <p>
+        Sono state aggiunte modifiche al parsing del file mtl nella funzione <code>glmReadMTL</code> del file <code>glm_utils.js</code>.
+        Le proprietà aggiunte sono le seguenti:
+    </p>
+    <ul>
+        <li><code>map_Kd</code>: Mappa la texture di base dell'oggetto tramite un'immagine.</li>
+        <li><code>map_Bump</code>: Fornisce le coordinate delle normali espresse in <em>Tangent Space</em>.</li>
+        <li><code>map_Ns</code>: Fornisce i coefficienti di roughness per ogni texel.</li>
+    </ul>
+
+    <h3>4.3 Architettura dei Fragment Shader</h3>
+    <p>
+        Per ottimizzare il carico computazionale sulla GPU, il rendering non utilizza un unico shader program monolitico, 
+        ma shader specifici che vengono usati selettivamente in base ai requisiti del materiale dell'oggetto:
+    </p>
+    <ol>
+        <li><strong>colorShader:</strong> Shader minimale di base utilizzato per lo shadow pass.</li>
+        <li><strong>lightShadowShader (Texture + Luce + Ombre):</strong> Applica la texture combinando il calcolo dell'illuminazione di
+            Phong e l'attenuazione data dalla shadow map.</li>
+        <li><strong>lightShadowBumpShader (Texture + Luce + Ombre + Bump Mapping):</strong> Introduce il calcolo delle perturbazioni
+            delle normali per pixel per simulare rilievi geometrici complessi.</li>
+    <li><strong>lightShadowBumpShininessShader (Texture + Luce + Ombre + Bump Mapping + Shininess Mapping):</strong> Integra tutte le
+            caratteristiche precedenti, aggiungendo la modulazione della riflessione speculare (shininess) data dalla texture dedicata.</li>
+    </ol>
+
+    <h3>4.4 Gestione delle Ombre (Shadow Mapping)</h3>
+    <p>
+        La tecnica dello <strong>Shadow Mapping</strong> è implementata in modalità multi-pass.
+        Nella prima passata (Shadow Pass), la scena viene renderizzata posizionando la camera in corrispondenza della sorgente
+        luminosa proiettata da sotto alla lampada. Il risultato di questa passata viene memorizzato in una <code>depthTexture</code>. 
+    </p>
+    <p>
+        Nella passata di rendering principale, all'interno del vertex shader, le coordinate di ciascun frammento 
+        vengono trasformate dallo spazio di vista del mondo allo spazio di vista della luce. Successivamente, nel fragment shader, 
+        effettuando un test di profondità, se il valore Z attuale del frammento risulta maggiore o uguale del rispettivo valore memorizzato
+        nella <code>depthTexture</code> (coadiuvato da un valore di <em>bias</em> configurabile per prevenire l'effetto di <em>shadow acne</em>
+        e <em>peter panning</em>), il frammento viene marcato come "in ombra" e privato della componente speculare e diffusa della luce diretta.
+    </p>
+
+    <h3>4.5 Bump Mapping</h3>
+    <p>
+        Per l'integrazione del Bump Mapping (implementato prendendo come riferimento metodologico la documentazione tecnica di <em>LearnOpenGL</em>), 
+        è stata sviluppata una funzione matematica (<code>calculateTangent</code> nel file <code>utils.js</code>) che analizza le facce 
+        triangolari delle mesh per calcolare le <strong>Tangenti (T)</strong> partendo dalle coordinate spaziali dei vertici e dalle coordinate UV associate. 
+    </p>
+    <p>
+        Poiché le normali campionate dalla texture <code>map_Bump</code> risiedono nel tangent space,
+        nel vertex shader viene costruita la <strong>matrice TBN</strong> (composta dai vettori Tangente, Bitangente
+        e Normale). Moltiplicando il vettore campionato per la matrice TBN, le normali vengono convertite correttamente nel 
+        <em>World Space</em>, permettendo un calcolo coerente del prodotto scalare per l'illuminazione di Phong per-pixel.
+    </p>
+
+    <h3>4.6 Rimappatura della Roughness Map</h3>
+    <p>
+        I valori estratti dalla texture <code>map_Ns</code> derivano originariamente da mappe di roughness di tipo PBR,
+        i cui valori fluttuano in un range normalizzato [0.0, 1.0]. Poiché il modello di illuminazione implementato si basa sull'equazione
+        di riflessione di Phong, i valori estratti vengono rimappati nel range richiesto dal modello.
+        Ciò consente di ottenere riflessi netti e focalizzati su materiali riflettenti (e.g. il martello) e riflessi
+        morbidi e diffusi su superfici opache (e.g. il pavimento).
+    </p>
+
+    <h3>4.7 Configurazione dello Spotlight e Gestione della Penombra</h3>
+    <p>
+        Nei fragment shader dedicati alla gestione dei materiali illuminati viene modellata una sorgente di tipo <strong>Spotlight</strong>. 
+        I parametri geometrici descrittivi del cono luminoso vengono passati tramite le seguenti definizioni uniform e computati nel codice GLSL:
+    </p>
+
+    <pre>// uniform nel codice javascript
+u_innerLimit: Math.cos(Utils.degToRad(controlsLighting.fieldOfView / 2 - 10)), 
+u_outerLimit: Math.cos(Utils.degToRad(controlsLighting.fieldOfView / 2)), 
+u_lightDirection: lightWorldMatrix.slice(8, 11) // Corrisponde al vettore Z della matrice di trasformazione della luce</pre>
+
+    <pre>// Logica di attenuazione nel codice GLSL
+float dotFromDirection = dot(surfaceToLightDirection, u_lightDirection); 
+float limitRange = u_innerLimit - u_outerLimit; 
+float inLight = clamp((dotFromDirection - u_outerLimit) / limitRange, 0.0, 1.0);</pre>
+
+    <p>
+        La logica matematica implementata permette di sfumare gradualmente gli ultimi 10 gradi del cono d'ombra. 
+        Le variabili e le operazioni si articolano secondo i seguenti criteri:
+    </p>
+    <ul>
+        <li>
+            <code>u_lightDirection</code> esprime la direzione del vettore Z centrale della luce in world space. Eseguendo il prodotto scalare 
+            tra questo vettore e il vettore che unisce la superficie alla luce (<code>surfaceToLightDirection</code>), si ricava 
+            il coseno dell'angolo compreso tra l'asse di simmetria della sorgente luminosa e il punto della superficie considerata.
+        </li>
+        <li>
+            La uniform <code>u_innerLimit</code> definisce l'ampiezza del cono interno: qualsiasi pixel situato entro questo raggio angolare riceve il 100% 
+            dell'intensità luminosa. Al contrario, la uniform <code>u_outerLimit</code> delimita la soglia esterna del fascio, al di fuori della quale i frammenti
+            non ricevono alcune luce.
+        </li>
+        <li>
+            La sottrazione dei coseni dei due limiti genera il <code>limitRange</code>, che quantifica l'estensione geometrica della <strong>penombra</strong>. 
+            La formula finale applicata alla variabile <code>inLight</code> opera un'<strong>interpolazione lineare inversa</strong>:
+            <ul>
+                <li><code>(dotFromDirection - u_outerLimit)</code> misura lo scostamento angolare del pixel rispetto al confine del buio.</li>
+                <li>La divisione per <code>limitRange</code> normalizza tale scostamento in una percentuale compresa nell'intervallo [0.0, 1.0].</li>
+                <li>La funzione <code>clamp(..., 0.0, 1.0)</code> costringe tassativamente il coefficiente a non assumere valori negativi
+                fuori dal cono e a non superare l'unità al centro del fuoco.</li>
+            </ul>
+        </li>
+    </ul>
+</section>
+
+</body>
+</html>

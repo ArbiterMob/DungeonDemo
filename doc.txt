@@ -1,3 +1,0 @@
-la seconda si chiami "doc" e contenga una relazione in html
-sul progetto realizzato (descrizione dell'applicazione, 
-spiegazione delle scelte effettuate, funzionalità previste, particolarità, ecc.). 
