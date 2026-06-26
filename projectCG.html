@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>WebGL Test</title>
+    <title>DungeonDemo</title>
 
     <script src="resources/dat.gui.js"></script>
     <script src="resources/glm_utils.js"></script>
@@ -365,6 +365,7 @@
         //uniform vec3 u_Ka;        // Ka
         //uniform vec3 u_Kd;        // Kd
         //uniform float u_Ns;       // Ns
+        uniform vec3 u_Ks;
 
         varying vec3 v_T;
         varying vec3 v_B;
@@ -409,7 +410,7 @@
             gl_FragColor = vec4(
                 texColor.rgb * 0.3 +
                 texColor.rgb * light * shadowLight +
-                specular * shadowLight,
+                specular * shadowLight * u_Ks,
                 texColor.a
             );
         }
@@ -487,6 +488,7 @@
         //uniform vec3 u_Ka;        // Ka
         //uniform vec3 u_Kd;        // Kd
         uniform float u_Ns;         // Ns
+        uniform vec3 u_Ks;
 
         varying vec3 v_T;
         varying vec3 v_B;
@@ -529,7 +531,7 @@
             gl_FragColor = vec4(
                 texColor.rgb * 0.3 +
                 texColor.rgb * light * shadowLight +
-                specular * shadowLight,
+                specular * shadowLight * u_Ks,
                 texColor.a
             );
         }
@@ -595,6 +597,7 @@
         //uniform vec3 u_Ka;        // Ka
         //uniform vec3 u_Kd;        // Kd
         uniform float u_Ns;         // Ns
+        uniform vec3 u_Ks;
 
         void main()
         {
@@ -628,7 +631,7 @@
             gl_FragColor = vec4(
                 texColor.rgb * 0.3 +
                 texColor.rgb * light * shadowLight +
-                specular * shadowLight,
+                specular * shadowLight * u_Ks,
                 texColor.a
             );
         }

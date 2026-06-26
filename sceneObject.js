@@ -381,6 +381,7 @@ export class SceneObject
             u_modelMatrix: drawMatrix,
             u_normalMatrix: normalMatrix,
             u_texture: this.#texture,
+            u_Ks: this.objectData.specular,
         }
 
         if (this.objectData.mapBump != null)

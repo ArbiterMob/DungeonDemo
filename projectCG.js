@@ -78,7 +78,7 @@ function main()
     const controlsCamera = 
     {
         zNear: 0.001,
-        zFar: 100,
+        zFar: 50,
         D: 3.0,
         theta: 3.05,
         phi: 1.22,
@@ -974,7 +974,7 @@ function defineGui(controlsCamera, controlsLighting, controlsTesting)
 
     const cameraFolder = gui.addFolder('Camera');
     cameraFolder.add(controlsCamera, "zNear").min(1).max(10).step(1);
-    cameraFolder.add(controlsCamera,"zFar").min(1).max(100).step(1);
+    cameraFolder.add(controlsCamera,"zFar").min(1).max(50).step(1);
     cameraFolder.add(controlsCamera,"D").min(1).max(5).step(1);
     cameraFolder.add(controlsCamera,"theta").min(0).max(6.28).step(dr);
     cameraFolder.add(controlsCamera,"phi").min(0).max(3.14).step(dr);
